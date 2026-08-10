@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	inventory "github.com/Sednan22/RepeatedSkins/pkg/steaminventory"
+	inventory "github.com/Sednan22/steam-inventory-go/pkg/steaminventory"
 )
 
 func main() {
@@ -45,12 +45,13 @@ func main() {
 
 	for key, value := range userInv {
 
-		// You can check for repeated items
+		// You can check for repeated items with an if
 		if value >= 3 {
 			fmt.Printf("%s -> %d\n", key, value)
 		}
-		// Print all items
-		// fmt.Printf("%s -> %d\n", key, value)
+
+		// Or print all items
+		fmt.Printf("%s -> %d\n", key, value)
 	}
 
 	fmt.Println("Done!")
