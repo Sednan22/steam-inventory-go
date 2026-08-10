@@ -43,11 +43,12 @@ func main() {
 
 	for key, value := range userInv {
 
-		// // You can check for repeated items
-		// if value >= 3 {
-		// 	fmt.Printf("%s -> %d\n", key, value)
-		// }
-		fmt.Printf("%s -> %d\n", key, value)
+		// You can check for repeated items
+		if value >= 3 {
+			fmt.Printf("%s -> %d\n", key, value)
+		}
+		// Print all items
+		// fmt.Printf("%s -> %d\n", key, value)
 	}
 
 	fmt.Println("Done!")

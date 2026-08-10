@@ -9,6 +9,7 @@ import (
 type UserInventory struct {
 	Items             []Assets       `json:"assets"`
 	ItemsDescriptions []Descriptions `json:"descriptions"`
+	TotalItems        int            `json:"total_inventory_count"`
 }
 
 type Assets struct {
@@ -34,7 +35,7 @@ func GetUserInventory(steamID, game, contextID int) (map[string]int, error) {
 	}
 	defer res.Body.Close()
 
-	fmt.Println(res.Status)
+	// fmt.Printf("Request status: %s\n", res.Status)
 	if res.StatusCode <= 199 || res.StatusCode >= 300 {
 		return repeatedSkins, fmt.Errorf("Error making request: %s", res.Status)
 	}
@@ -45,12 +46,16 @@ func GetUserInventory(steamID, game, contextID int) (map[string]int, error) {
 	// 	return repeatedSkins, err
 	// }
 	// fmt.Println(string(body))
-	// // if total_inventory_count = 0 even tough got 200 you are rate limit
 
 	var assets UserInventory
 	err = json.NewDecoder(res.Body).Decode(&assets)
 	if err != nil {
 		return repeatedSkins, err
+	}
+
+	// if total_inventory_count = 0 even though got status 200 you are rate limit
+	if res.StatusCode == 200 && assets.TotalItems == 0 {
+		return repeatedSkins, fmt.Errorf("Probably 429 Too Many Requests!")
 	}
 
 	var assetMap = map[string]int{}
