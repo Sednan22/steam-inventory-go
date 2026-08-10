@@ -1,4 +1,4 @@
-package main
+package inventory
 
 import (
 	"encoding/json"
@@ -60,13 +60,7 @@ func GetUserInventory(steamID, game, contextID int) (map[string]int, error) {
 
 	var assetMap = map[string]int{}
 	for _, asset := range assets.Items {
-
-		_, ok := assetMap[asset.ClassID]
-		if !ok {
-			assetMap[asset.ClassID] = 1
-		} else {
-			assetMap[asset.ClassID]++
-		}
+		assetMap[asset.ClassID]++
 	}
 
 	for _, items := range assets.ItemsDescriptions {

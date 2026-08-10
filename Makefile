@@ -1,12 +1,9 @@
-.PHONY: all build run clean
+.PHONY: build run clean
 
-all: build run
+BINARY_NAME=getUserInventory
 
 build:
-	@go build -o getUserInventory
-
-run: 
-	@./getUserInventory
+	@go build -o $(BINARY_NAME) ./cmd/$(BINARY_NAME)
 
 clean:
-	@rm -f getUserInventory
+	@rm -f $(BINARY_NAME)
