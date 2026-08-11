@@ -46,7 +46,9 @@ Run the compiled binary by passing the required positional arguments and optiona
 ### Examples
 
 #### 1. Basic Terminal Output (Default Text Format)
+```bash
 ./getUserInventory 76561198000000000 730 2
+```
 
 #### 2. Formatted Terminal Output
 Print the inventory directly to the console formatted as JSON or CSV:
@@ -57,12 +59,16 @@ Print the inventory directly to the console formatted as JSON or CSV:
 
 #### 3. Export to File with Automatic Format Detection
 When using `-output`, the format is automatically inferred from the file extension (`.json`, `.csv`, or `.txt`):
+```bash
 ./getUserInventory -output=inventory.json 76561198000000000 730 2
 ./getUserInventory -output=inventory.csv 76561198000000000 730 2
+```
 
 #### 4. Export to File with Explicit Format
 Override or specify the format when writing to custom file names:
+```bash
 ./getUserInventory -format=json -output=my_inventory_backup 76561198000000000 730 2
+```
 
 ## ⚠️ Known Limitations (Steam API)
 
