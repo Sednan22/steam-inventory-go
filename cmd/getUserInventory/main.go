@@ -1,39 +1,42 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"os"
+	"path/filepath"
 	"strconv"
 
+	"github.com/Sednan22/steam-inventory-go/pkg/exporter"
 	inventory "github.com/Sednan22/steam-inventory-go/pkg/steaminventory"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 
-	args := os.Args[1:]
+	_ = godotenv.Load()
+
+	var format, output string
+	flag.StringVar(&format, "format", "", "specify the format in which the data will be output")
+	flag.StringVar(&output, "output", "", "specify the path where the data will be output")
+	flag.Parse()
+
+	args := flag.Args()
 
 	if len(args) != 3 {
-		fmt.Println("usage: ./getUserInventory <steamID64> <appID> <contextID>")
+		fmt.Println("usage: ./getUserInventory [flags] <steamID64> <appID> <contextID>")
 		return
 	}
 
-	// steamID64 for user you want to fetch
-	// number id for game you want to fetch (example 730 is cs2 and 440 is tf2, etc...)
-	// contextid usually 2 (cs2 items 2 is tradable 16 is untradable)
+	steamID := args[0]
 
-	steamID, err := strconv.Atoi(args[0])
-	if err != nil {
-		fmt.Printf("Error converting string to int: %v\n", err)
-		return
-	}
 	game, err := strconv.Atoi(args[1])
 	if err != nil {
-		fmt.Printf("Error converting string to int: %v\n", err)
+		fmt.Printf("error converting appID to int: %v\n", err)
 		return
 	}
 	contextID, err := strconv.Atoi(args[2])
 	if err != nil {
-		fmt.Printf("Error converting string to int: %v\n", err)
+		fmt.Printf("error converting contextID to int: %v\n", err)
 		return
 	}
 
@@ -43,16 +46,44 @@ func main() {
 		return
 	}
 
-	for key, value := range userInv {
+	if format == "" {
+		if output != "" {
+			ext := filepath.Ext(output)
+			if ext == ".json" {
+				format = "json"
 
-		// You can check for repeated items with an if
-		if value >= 3 {
-			fmt.Printf("%s -> %d\n", key, value)
+			} else if ext == ".csv" {
+				format = "csv"
+
+			} else {
+				format = "txt"
+			}
+		} else {
+			fmt.Printf("Unsupported format '%s'. Using 'txt' instead.\n", format)
+			format = "txt"
 		}
-
-		// Or print all items
-		fmt.Printf("%s -> %d\n", key, value)
 	}
 
-	fmt.Println("Done!")
+	data, err := exporter.FormatData(userInv, format)
+	if err != nil {
+		fmt.Printf("error formatting data to format %s: %v", format, err)
+		return
+	}
+
+	if output != "" {
+		err = exporter.DataToFile(format, output, data)
+		if err != nil {
+			fmt.Printf("error writing data to file: %v", err)
+			return
+		}
+
+		fmt.Println("done!")
+		return
+
+	} else {
+		fmt.Println(string(data))
+		fmt.Println("done!")
+		return
+	}
+
 }

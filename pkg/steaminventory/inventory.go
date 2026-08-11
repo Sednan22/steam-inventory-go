@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"os"
+	"time"
 )
 
 type UserInventory struct {
@@ -21,41 +24,61 @@ type Descriptions struct {
 	MarketHashName string `json:"market_hash_name"`
 }
 
-func GetUserInventory(steamID, game, contextID int) (map[string]int, error) {
+func createHTTPClient() (*http.Client, error) {
 
-	var repeatedSkins = map[string]int{}
+	proxyEnv := os.Getenv("PROXY_URL")
 
-	fmt.Println("Getting user inventory...")
+	if proxyEnv == "" {
+		// fmt.Println("no proxy detected. Using default http client")
+		return &http.Client{
+			Timeout: 15 * time.Second,
+		}, nil
+	}
 
-	userInv := fmt.Sprintf("https://steamcommunity.com/inventory/%d/%d/%d?l=english&count=1000", steamID, game, contextID)
-
-	res, err := http.Get(userInv)
+	proxyURL, err := url.Parse(proxyEnv)
 	if err != nil {
-		return repeatedSkins, err
+		return nil, fmt.Errorf("proxy url invalid: %w", err)
+	}
+
+	transport := &http.Transport{
+		Proxy: http.ProxyURL(proxyURL),
+	}
+
+	return &http.Client{
+		Transport: transport,
+		Timeout:   15 * time.Second,
+	}, nil
+}
+
+func GetUserInventory(steamID string, game, contextID int) (map[string]int, error) {
+
+	fmt.Println("getting user inventory...")
+
+	userInv := fmt.Sprintf("https://steamcommunity.com/inventory/%s/%d/%d?l=english&count=1000", steamID, game, contextID)
+
+	client, err := createHTTPClient()
+	if err != nil {
+		return nil, fmt.Errorf("error creating http client: %w", err)
+	}
+
+	res, err := client.Get(userInv)
+	if err != nil {
+		return nil, err
 	}
 	defer res.Body.Close()
 
-	// fmt.Printf("Request status: %s\n", res.Status)
-	if res.StatusCode <= 199 || res.StatusCode >= 300 {
-		return repeatedSkins, fmt.Errorf("Error making request: %s", res.Status)
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error making request: %s", res.Status)
 	}
-
-	// // Uncomment to see response as string
-	// body, err := io.ReadAll(res.Body)
-	// if err != nil {
-	// 	return repeatedSkins, err
-	// }
-	// fmt.Println(string(body))
 
 	var assets UserInventory
 	err = json.NewDecoder(res.Body).Decode(&assets)
 	if err != nil {
-		return repeatedSkins, err
+		return nil, fmt.Errorf("error decoding json response: %w", err)
 	}
 
-	// if total_inventory_count = 0 even though got status 200 you are rate limit
-	if res.StatusCode == 200 && assets.TotalItems == 0 {
-		return repeatedSkins, fmt.Errorf("Probably 429 Too Many Requests!")
+	if assets.TotalItems == 0 {
+		return nil, fmt.Errorf("probably 429 Too Many Requests!")
 	}
 
 	var assetMap = map[string]int{}
@@ -63,9 +86,10 @@ func GetUserInventory(steamID, game, contextID int) (map[string]int, error) {
 		assetMap[asset.ClassID]++
 	}
 
+	var userItems = map[string]int{}
 	for _, items := range assets.ItemsDescriptions {
-		repeatedSkins[items.MarketHashName] = assetMap[items.ClassID]
+		userItems[items.MarketHashName] = assetMap[items.ClassID]
 	}
 
-	return repeatedSkins, nil
+	return userItems, nil
 }
