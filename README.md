@@ -7,7 +7,10 @@ A lightweight and efficient Go tool (and library) to fetch public Steam user inv
 - Fetches inventories for any Steam game (CS2, TF2, Rust, etc.) using a user's SteamID64.
 - Maps and cross-references item IDs (assets) with their respective details (descriptions).
 - Aggregates items by market name (`market_hash_name`) and calculates total quantities.
-- **Multiple Output Formats:** Formats data into **JSON**, **CSV**, or formatted plain text.
+- **Concurrent Multi-Fetch:** Fetches inventories for multiple users in parallel using **Goroutines** and **Channels**.
+- **Built-in Rate Limiting:** Enforces request pacing via `time.Ticker` to mitigate API blocks during batch fetching.
+- **Input Sanitization:** Automatically trims spaces, trailing control characters (`\r\n`), and ignores blank lines when reading user list files.
+- **Multiple Output Formats:** Formats data into **JSON**, **CSV** (with dedicated `UserID` columns), or formatted plain text.
 - **CLI Flags & File Export:** Output directly to the terminal or save results to a file with automatic format detection based on file extension.
 - Modular project structure (`pkg/` for the reusable library and `cmd/` for the CLI tool).
 
@@ -28,52 +31,79 @@ make build
 
 ## 📖 Usage (CLI)
 
-Run the compiled binary by passing the required positional arguments and optional flags:
-
-`./getUserInventory [flags] <steamID64> <appID> <contextID>`
-
-### Positional Arguments:
-- **SteamID64:** The 64-bit numerical ID of the Steam user (profile inventory must be set to Public).
-- **AppID:** The Steam Game ID (e.g., `730` for CS2, `440` for TF2).
-- **ContextID:** The inventory context ID (typically `2` for most tradeable game items).
+Run the compiled binary by passing positional arguments and optional flags. The tool supports two operational modes: **Single User** and **Multi-Fetch**.
 
 ### Available Flags:
+- `-multi`: Enable batch fetching for multiple users listed in `usersList.txt` (default: `false`).
 - `-format`: Explicitly specify the output format (`json`, `csv`, or `txt`).
 - `-output`: Path to the output file where data should be saved.
 
 ---
 
-### Examples
+### 1. Single User Mode
 
-#### 1. Basic Terminal Output (Default Text Format)
+Fetch inventory data for a single Steam user.
+
+**Usage:**
+`./getUserInventory [flags] <steamID64> <appID> <contextID>`
+
+#### Examples:
 ```bash
+# Basic terminal output (Default Text Format)
 ./getUserInventory 76561198000000000 730 2
-```
 
-#### 2. Formatted Terminal Output
-Print the inventory directly to the console formatted as JSON or CSV:
-```bash
+# Export directly to JSON or CSV terminal output
 ./getUserInventory -format=json 76561198000000000 730 2
 ./getUserInventory -format=csv 76561198000000000 440 2
-```
 
-#### 3. Export to File with Automatic Format Detection
-When using `-output`, the format is automatically inferred from the file extension (`.json`, `.csv`, or `.txt`):
-```bash
+# Export to file with automatic format detection based on extension
 ./getUserInventory -output=inventory.json 76561198000000000 730 2
 ./getUserInventory -output=inventory.csv 76561198000000000 730 2
 ```
 
-#### 4. Export to File with Explicit Format
-Override or specify the format when writing to custom file names:
-```bash
-./getUserInventory -format=json -output=my_inventory_backup 76561198000000000 730 2
+---
+
+### 2. Multi-Fetch Mode (Batch Processing)
+
+Fetch inventories for multiple users listed in a `usersList.txt` file placed in the working directory. 
+
+Each line in `usersList.txt` must contain a single `SteamID64`:
+```text
+76561198000000000
+76561198111111111
 ```
+
+**Usage:**
+`./getUserInventory -multi=true [flags] <appID> <contextID>`
+
+#### Examples:
+```bash
+# Fetch inventories for all IDs in usersList.txt and output to terminal
+./getUserInventory -multi=true 730 2
+
+# Batch fetch and export aggregated results into a single CSV file
+./getUserInventory -multi=true -output=all_inventories.csv 730 2
+
+# Batch fetch and export aggregated results into a formatted JSON file
+./getUserInventory -multi=true -output=all_inventories.json 730 2
+```
+
+---
+
+## 📊 Export Formats
+
+| Format | Description | Structure Example |
+| :--- | :--- | :--- |
+| **JSON** | Aggregated nested object mapping UserIDs to item names and counts. | `{"76561198...": {"AK-47 \| Redline": 1}}` |
+| **CSV** | Tabular format with dedicated columns for `UserID`, `Item`, and `Quantity`. | `UserID,Item,Quantity\n76561198...,"AK-47 \| Redline",1` |
+| **TXT** *(Default)* | Human-readable text block grouped by user. | `76561198... inventory:\n - AK-47 -> 1` |
+
+---
 
 ## ⚠️ Known Limitations (Steam API)
 
-The public Steam Community Inventory API (`steamcommunity.com/inventory/...`) enforces strict rate limits:
-- **Rate Limits & IP Blocks:** Making frequent requests in a short timeframe will lead to temporary IP blocks (HTTP 429 or HTTP 200 responses returning `total_inventory_count: 0`). For production or high-volume usage, implementing retry strategies with exponential backoff, proxy rotation, or response caching is strongly recommended.
+The public Steam Community Inventory API (`[steamcommunity.com/inventory/](https://steamcommunity.com/inventory/)...`) enforces strict rate limits:
+- **Rate Limits & IP Blocks:** Making frequent requests in a short timeframe will lead to temporary IP blocks (HTTP 429 or HTTP 200 responses returning `total_inventory_count: 0`). Multi-fetch mode uses an internal rate-limiting ticker to space out requests, but large batches may still hit API thresholds.
 - **Context ID & Item Visibility Restrictions:**
   - Using `contextID = 2` only fetches **tradable items** accessible via the public endpoint without authentication.
   - Fetching non-tradable items, items on trade hold, or private context data (`contextID = 16`) requires authenticated requests with valid session cookies (`sessionid` and `steamLoginSecure`).
