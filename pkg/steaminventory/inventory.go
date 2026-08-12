@@ -29,7 +29,7 @@ func createHTTPClient() (*http.Client, error) {
 	proxyEnv := os.Getenv("PROXY_URL")
 
 	if proxyEnv == "" {
-		// fmt.Println("no proxy detected. Using default http client")
+		fmt.Println("no proxy detected. Using default http client")
 		return &http.Client{
 			Timeout: 15 * time.Second,
 		}, nil
@@ -50,6 +50,8 @@ func createHTTPClient() (*http.Client, error) {
 	}, nil
 }
 
+// GetUserInventory fetches the public inventory for a given Steam ID, game AppID, and context ID.
+// It returns a map containing the item names mapped to their respective quantities.
 func GetUserInventory(steamID string, game, contextID int) (map[string]int, error) {
 
 	fmt.Printf("getting %s inventory...\n", steamID)

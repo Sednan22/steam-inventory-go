@@ -12,7 +12,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const rateLimit = 5 * time.Second
+// DefaultRateLimit defines the delay between consecutive requests to the Steam API.
+// It can be adjusted depending on application requirements or rate-limiting rules.
+var DefaultRateLimit = 5 * time.Second
 
 func main() {
 
@@ -61,7 +63,7 @@ func main() {
 
 		resultsChan := make(chan inventoryResult, len(usersIDs))
 
-		limiter := time.NewTicker(rateLimit)
+		limiter := time.NewTicker(DefaultRateLimit)
 		defer limiter.Stop()
 
 		for i, userId := range usersIDs {
