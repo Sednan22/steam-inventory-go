@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -31,12 +32,12 @@ func getOutputExtension(output string) (extension string) {
 	return filepath.Ext(output)
 }
 
-func FormatData(userInv map[string]int, format string) ([]byte, error) {
+func FormatData(allInventories map[string]map[string]int, format string) ([]byte, error) {
 
 	var data []byte
 	switch format {
 	case "json":
-		data, err := json.MarshalIndent(userInv, "", " ")
+		data, err := json.MarshalIndent(allInventories, "", " ")
 		if err != nil {
 			return nil, fmt.Errorf("error marshalling data to json: %w", err)
 		}
@@ -44,20 +45,56 @@ func FormatData(userInv map[string]int, format string) ([]byte, error) {
 
 	case "csv":
 		var b strings.Builder
-		fmt.Fprintf(&b, "Item, Quantity\n")
-		for key, value := range userInv {
-			fmt.Fprintf(&b, "%q,%d\n", key, value)
+		fmt.Fprintf(&b, "SteamID, Item, Quantity\n")
+		for user, inv := range allInventories {
+			for key, value := range inv {
+				fmt.Fprintf(&b, "%s,%q,%d\n", user, key, value)
+			}
 		}
 		data = []byte(b.String())
 		return data, nil
 
 	default:
 		var b strings.Builder
-		for key, value := range userInv {
-			fmt.Fprintf(&b, "%s -> %d\n", key, value)
+		for user, inv := range allInventories {
+			fmt.Fprintf(&b, "%s inventory:\n", user)
+			for key, value := range inv {
+				fmt.Fprintf(&b, "%s -> %d\n", key, value)
+			}
 		}
 		data = []byte(b.String())
 		return data, nil
 	}
 
+}
+
+func GetAllIDsFromFile() ([]string, error) {
+
+	file, err := os.Open("usersList.txt")
+	if err != nil {
+		return nil, fmt.Errorf("error reading usersIDs from file: %w", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	var usersIDs []string
+	for scanner.Scan() {
+
+		line := scanner.Text()
+
+		trimed := strings.TrimSpace(line)
+
+		if trimed == "" {
+			continue
+		}
+
+		usersIDs = append(usersIDs, trimed)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error scanning file: %w", err)
+	}
+
+	return usersIDs, nil
 }

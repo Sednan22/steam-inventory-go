@@ -52,7 +52,7 @@ func createHTTPClient() (*http.Client, error) {
 
 func GetUserInventory(steamID string, game, contextID int) (map[string]int, error) {
 
-	fmt.Println("getting user inventory...")
+	fmt.Printf("getting %s inventory...\n", steamID)
 
 	userInv := fmt.Sprintf("https://steamcommunity.com/inventory/%s/%d/%d?l=english&count=1000", steamID, game, contextID)
 
